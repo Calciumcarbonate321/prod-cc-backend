@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { cards, base_cards} from '../db/schema';
+import { cards, baseCards} from '../db/schema';
 import { configDotenv } from "dotenv";
 import { randomInt } from 'crypto';
 import { eq } from "drizzle-orm";
@@ -13,13 +13,16 @@ const db = drizzle(process.env.DATABASE_URL!);
 card.get('/', async (c) => {
   // Returns all cards
   const allCards = await db.select().from(cards);
+  if (!allCards || allCards.length === 0) {
+    return c.text("No cards found");
+  }
   return c.json(allCards);
 });
 
 card.post('/spawn', async (c) => {
   // Spawns a specified number of cards
   const { amount } = await c.req.json();
-  const allBaseCards = await db.select().from(base_cards);
+  const allBaseCards = await db.select().from(baseCards);
   const randomBaseCards = [];
 
   for (let i = 0; i < amount; i++) {
@@ -37,7 +40,7 @@ card.post('/spawn', async (c) => {
   try {
     const newCards = await db.insert(cards).values(
       randomBaseCards.map((baseCard) => ({
-        base_card_id: baseCard.id,
+        baseCardId: baseCard.id,
         level: 1,
         experience: 0,
       }))
@@ -53,7 +56,7 @@ card.post('/spawn', async (c) => {
 card.post('/claim',async(c)=>{
   // Claims a card for a user
   const { userId, cardId } = await c.req.json();
-  const claimedCard = await db.update(cards).set({owner_id: userId}).where(eq(cards.id, cardId)).returning();
+  const claimedCard = await db.update(cards).set({ownerId: userId}).where(eq(cards.id, cardId)).returning();
 
   if (!claimedCard) {
     return c.json({ message: "No card found" }, 404);

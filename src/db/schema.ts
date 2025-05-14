@@ -1,20 +1,21 @@
-import { pgEnum, pgTable as table } from "drizzle-orm/pg-core";
+import { pgEnum,primaryKey, pgTable as table } from "drizzle-orm/pg-core";
 import * as t from "drizzle-orm/pg-core";
 
 export const stanceEnum = pgEnum("stance", ["attack", "defense", "range"]);
 export const stageEnum = pgEnum("stage", ["basic", "stage_1", "stage_2"]);
-export const cosmeticsEnum = pgEnum("cosmetic_type", ["frame", "morph", "glow", "flair", "sketch"]);
+export const cosmeticType = pgEnum("cosmetic_type", ["frame", "morph", "glow", "flair", "sketch"]);
+export const misprintType = pgEnum("misprint_type", ["low_toner", "ink_error", "obstruction_error", "miscut_error", "double_print_error"]);
 
 export const users = table(
   "users",
   {
     id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
-    name: t.varchar("first_name", { length: 256 }),
+    name: t.varchar("name", { length: 256 }),
     discordId: t.varchar("discord_id", { length: 256 }),
   },
 );
 
-export const base_cards = table (
+export const baseCards = table (
   "base_cards",
   {
     id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -26,6 +27,7 @@ export const base_cards = table (
     rarity: t.integer().notNull(),
     fallbackCost: t.integer("fallback_cost").notNull(),
     health: t.integer().notNull(),
+    packId: t.integer("pack_id").references(() => packs.id).notNull(),
   }
 );
 
@@ -40,47 +42,70 @@ export const moves = table(
   }
 );
 
-export const base_cards_to_moves = table(
+export const baseCardsToMoves = table(
   "base_cards_to_moves",
   {
-    base_card_id: t.integer().references(() => base_cards.id).notNull(),
-    move_id: t.integer().references(() => moves.id).notNull(),
+    baseCardId: t.integer("base_card_id").references(() => baseCards.id).notNull(),
+    moveId: t.integer("move_id").references(() => moves.id).notNull(),
   },
-  (table) => ({
-    pk: t.primaryKey({ columns: [table.base_card_id, table.move_id] }),
-  })
+  (table) => [
+    primaryKey({columns: [table.baseCardId, table.moveId]}),
+  ]
 );
 
 export const cards = table(
   "cards",
   {
     id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
-    base_card_id: t.integer().references(() => base_cards.id).notNull(),
-    owner_id: t.integer().references(() => users.id),
+    baseCardId: t.integer("base_card_id").references(() => baseCards.id).notNull(),
+    misprint: misprintType(),
+    cardGrade: t.integer("card_grade"),
+    ownerId: t.integer().references(() => users.id),
     level: t.integer().notNull(),
     experience: t.integer().notNull(),
-    cosmetics_id: t.integer(),
   }
 )
 
 export const cosmetics = table(
   "cosmetics",
   {
-    "id": t.integer().primaryKey().generatedAlwaysAsIdentity(),
-    "name": t.varchar("name", { length: 256 }).notNull(),
-    "assetId": t.varchar("asset_id", { length: 256 }).notNull(),
-    "assetType": cosmeticsEnum().notNull(),
-    "isAnimated": t.boolean().notNull(),
+    id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+    name: t.varchar("name", { length: 256 }).notNull(),
+    assetId: t.varchar("asset_id", { length: 256 }).notNull(),
+    assetType: cosmeticType().notNull(),
+    isAnimated: t.boolean().notNull(),
   }
 )
 
-export const cards_to_cosmetics = table(
+export const cardsToCosmetics = table(
   "cards_to_cosmetics",
   {
-    card_id: t.integer().references(() => cards.id).notNull(),
-    cosmetic_id: t.integer().references(() => cosmetics.id).notNull(),
+    cardId: t.integer().references(() => cards.id).notNull(),
+    cosmeticId: t.integer().references(() => cosmetics.id).notNull(),
   },
-  (table) => ({
-    pk: t.primaryKey({ columns: [table.card_id, table.cosmetic_id] }),
-  })
+  (table) => [
+    primaryKey({columns: [table.cardId, table.cosmeticId]}),
+  ]
+)
+
+
+export const packs = table(
+  "packs",
+  {
+    id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+    name: t.varchar("name", { length: 256 }).notNull(),
+    assetId: t.varchar("asset_id", { length: 256 }).notNull(),
+    description: t.varchar("description", { length: 256 }).notNull(),
+    setId: t.integer("set_id").references(() => sets.id).notNull(),
+  }
+)
+
+export const sets = table(
+  "sets",
+  {
+    id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+    name: t.varchar("name", { length: 256 }).notNull(),
+    assetId: t.varchar("asset_id", { length: 256 }).notNull(),
+    description: t.varchar("description", { length: 256 }).notNull(),
+  }
 )

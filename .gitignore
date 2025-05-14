@@ -3,3 +3,4 @@ node_modules/
 drizzle/
 .env
 bun.lock
+test.py

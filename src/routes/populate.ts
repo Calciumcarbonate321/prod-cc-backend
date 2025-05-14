@@ -1,6 +1,6 @@
   import { Hono } from "hono";
   import { drizzle } from 'drizzle-orm/node-postgres';
-  import { moves, base_cards } from '../db/schema';
+  import { moves, baseCards } from '../db/schema';
 
   import { configDotenv } from "dotenv";
 
@@ -26,11 +26,11 @@
     }
   });
 
-  populate.post("/base_cards", async (c) => {
+populate.post("/base_cards", async (c) => {
     const data = await c.req.json();
-    const { name, assetId, flavourText, stance, stage, rarity, fallbackCost, health } = data;
+    const { name, assetId, flavourText, stance, stage, rarity, fallbackCost, health, packId } = data;
     try {
-      await db.insert(base_cards).values({
+      await db.insert(baseCards).values({
         name,
         assetId,
         flavourText,
@@ -39,6 +39,7 @@
         rarity,
         fallbackCost,
         health,
+        packId,
       });
       return c.json({ message: "Base cards added successfully" })
     } catch (error) {
