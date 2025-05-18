@@ -1,6 +1,7 @@
   import { Hono } from "hono";
   import { drizzle } from 'drizzle-orm/node-postgres';
-  import { moves, baseCards } from '../db/schema';
+  import { moves, baseCards, packs, sets } from '../db/schema';
+  import { eq } from "drizzle-orm";
 
   import { configDotenv } from "dotenv";
 
@@ -47,5 +48,47 @@ populate.post("/base_cards", async (c) => {
       return c.json({ error: "Failed to add base cards" });
     }
   });
+
+populate.patch("/base_cards/:id", async (c) => {
+  const { id } = c.req.param(); 
+  const data = await c.req.json();
+  const res = await db.update(baseCards).set(data).where(eq(baseCards.id, parseInt(id)));
+  if (res) {
+    return c.json({ message: "Base card updated successfully" });
+  } else {
+    return c.json({ error: "Failed to update base card" });
+  }
+})
+
+populate.post("/packs", async(c)=> {
+  const { name, assetId, description, setId } = await c.req.json();
+  try {
+    await db.insert(packs).values({
+      name,
+      assetId,
+      description,
+      setId,
+    });
+    return c.json({ message: "Pack added successfully" });
+  } catch (error) {
+    console.error("Error adding pack:", error);
+    return c.json({ error: "Failed to add pack" });
+  }
+})
+
+populate.post("/sets", async(c)=>{
+  const { name, assetId, description } = await c.req.json();
+  try {
+    await db.insert(sets).values({
+      name,
+      assetId,
+      description,
+    });
+    return c.json({ message: "Set added successfully" });
+  } catch (error) {
+    console.error("Error adding set:", error);
+    return c.json({ error: "Failed to add set" });
+  }
+})
 
   export default populate;

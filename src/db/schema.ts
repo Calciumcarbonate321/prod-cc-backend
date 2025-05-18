@@ -57,10 +57,11 @@ export const cards = table(
   "cards",
   {
     id: t.integer().primaryKey().generatedAlwaysAsIdentity(),
+    uid: t.uuid().defaultRandom().notNull(),
     baseCardId: t.integer("base_card_id").references(() => baseCards.id).notNull(),
     misprint: misprintType(),
-    cardGrade: t.integer("card_grade"),
-    ownerId: t.integer().references(() => users.id),
+    cardGrade: t.integer("card_grade").default(1),
+    ownerId: t.integer("owner_id").references(() => users.id),
     level: t.integer().notNull(),
     experience: t.integer().notNull(),
   }
@@ -80,8 +81,8 @@ export const cosmetics = table(
 export const cardsToCosmetics = table(
   "cards_to_cosmetics",
   {
-    cardId: t.integer().references(() => cards.id).notNull(),
-    cosmeticId: t.integer().references(() => cosmetics.id).notNull(),
+    cardId: t.integer("card_id").references(() => cards.id).notNull(),
+    cosmeticId: t.integer("cosmetic_id").references(() => cosmetics.id).notNull(),
   },
   (table) => [
     primaryKey({columns: [table.cardId, table.cosmeticId]}),
@@ -107,5 +108,5 @@ export const sets = table(
     name: t.varchar("name", { length: 256 }).notNull(),
     assetId: t.varchar("asset_id", { length: 256 }).notNull(),
     description: t.varchar("description", { length: 256 }).notNull(),
-  }
+  } 
 )

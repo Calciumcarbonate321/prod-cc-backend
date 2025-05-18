@@ -15,7 +15,7 @@ app.get("/", async (c) => {
   return c.json(allMoves);
 })
 
-app.route("/card", card);
+app.route("/cards", card);
 app.route("/populate", populate);
 
 app.get("/message", (c) => {

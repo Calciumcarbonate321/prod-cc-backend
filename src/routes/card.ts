@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { drizzle } from 'drizzle-orm/node-postgres';
-import { cards, baseCards} from '../db/schema';
+import { cards, baseCards, misprintType} from '../db/schema';
 import { configDotenv } from "dotenv";
 import { randomInt } from 'crypto';
 import { eq } from "drizzle-orm";
@@ -31,6 +31,15 @@ card.post('/spawn', async (c) => {
     randomBaseCards.push(randomBaseCard);
   }
 
+  //random misprint
+  const randomMisprintIndex = randomInt(0, misprintType.enumValues.length) as keyof typeof misprintType.enumValues;
+  let randomMisprint = null;
+  if (randomInt(0, 100)<10){
+    randomMisprint = misprintType.enumValues[randomMisprintIndex];
+  }
+  
+  const grade = getRandomGrade();
+  
   if (!randomBaseCards) {
     return c.json({ message: "No base cards found" }, 404);
   }
@@ -43,6 +52,8 @@ card.post('/spawn', async (c) => {
         baseCardId: baseCard.id,
         level: 1,
         experience: 0,
+        misprintType: randomMisprint,
+        cardGrade: grade,
       }))
     ).returning();
 
@@ -64,5 +75,21 @@ card.post('/claim',async(c)=>{
 
   return c.json(claimedCard);
 })
+
+function getRandomGrade(): number {
+  const weights = [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]; // Grade 1 has highest weight, grade 10 lowest
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+  const rand = Math.random() * totalWeight;
+
+  let cumulative = 0;
+  for (let i = 0; i < weights.length; i++) {
+    cumulative += weights[i];
+    if (rand < cumulative) {
+      return i + 1; // Grades are 1-based
+    }
+  }
+
+  return 10; // fallback (shouldn't happen)
+}
 
 export default card;
