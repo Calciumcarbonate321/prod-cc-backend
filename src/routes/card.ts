@@ -1,22 +1,29 @@
 import { Hono } from "hono";
-import { drizzle } from 'drizzle-orm/node-postgres';
 import { cards, baseCards, misprintType} from '../db/schema';
-import { configDotenv } from "dotenv";
 import { randomInt } from 'crypto';
 import { eq } from "drizzle-orm";
-
-configDotenv();
+import { db } from "../db/server";
+import { redis } from "../db/redis";
 
 const card = new Hono();
-const db = drizzle(process.env.DATABASE_URL!);
 
 card.get('/', async (c) => {
   // Returns all cards
-  const allCards = await db.select().from(cards);
+  const allCards = await db.select().from(baseCards);
   if (!allCards || allCards.length === 0) {
     return c.text("No cards found");
   }
   return c.json(allCards);
+});
+
+card.get('/:uid', async (c) => {
+  //get info on one card
+  const { uid } = c.req.param();
+  const card = await db.select().from(cards).where(eq(cards.uid, uid)).limit(1);
+  if (!card || card.length === 0) {
+    return c.json({ message: "No card found" }, 404);
+  }
+  return c.json(card);
 });
 
 card.post('/spawn', async (c) => {
@@ -63,6 +70,59 @@ card.post('/spawn', async (c) => {
     return c.json({ message: "Failed to spawn cards"}, 500);
   }
 });
+
+card.post('/spawn/pack', async(c)=>{
+  //spawns cards from specified pack
+  const { amount, packId, userId } = await c.req.json();
+  //checks cooldown from redis
+  if (!amount || !packId || !userId) {
+    return c.json({ message: "Invalid request data" }, 400);
+  }
+  const cooldownKey = `claim_cooldown:${userId}`;
+  const cooldown = await redis.get(cooldownKey);
+  console.log("Cooldown status for user:", userId, "is", cooldown);
+  if (cooldown) {
+    return c.json({ message: "You are on cooldown. Please wait before claiming another card." }, 429);
+  }
+  const allBaseCards = await db.select().from(baseCards).where(eq(baseCards.packId, packId));
+  const randomBaseCards = [];
+  for (let i = 0; i < amount; i++) {
+    const randomIndex = randomInt(0, allBaseCards.length);
+    const randomBaseCard = allBaseCards[randomIndex];
+    randomBaseCards.push(randomBaseCard); 
+  }
+  //random misprint
+  const randomMisprintIndex = randomInt(0, misprintType.enumValues.length) as keyof typeof misprintType.enumValues;
+  let randomMisprint = null;
+  if (randomInt(0, 100) < 10) {
+    randomMisprint = misprintType.enumValues[randomMisprintIndex];
+  }
+  const grade = getRandomGrade();
+  if (!randomBaseCards) {
+    return c.json({ message: "No base cards found" }, 404);
+  }
+  console.log("Spawning a: ", randomBaseCards.map(card => card.name), "with id: ", randomBaseCards.map(card => card.id));
+  await redis.set(cooldownKey, 'active'); //sets cooldown in redis
+  await redis.expire(cooldownKey, 30); //sets cooldown for 30 seconds
+  try {
+    const newCards = await db.insert(cards).values(
+      randomBaseCards.map((baseCard) => ({
+        baseCardId: baseCard.id,
+        level: 1,
+        experience: 0,
+        misprintType: randomMisprint, 
+        cardGrade: grade,
+      }))
+    ).returning();
+    //sets cooldown in redis for 30s
+    
+
+    return c.json(newCards);
+  } catch (error) {
+    console.error("Error spawning cards:", error);
+    return c.json({ message: "Failed to spawn cards"}, 500);
+  }
+})
 
 card.post('/claim',async(c)=>{
   // Claims a card for a user

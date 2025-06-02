@@ -1,31 +1,25 @@
-  import { Hono } from "hono";
-  import { drizzle } from 'drizzle-orm/node-postgres';
-  import { moves, baseCards, packs, sets } from '../db/schema';
-  import { eq } from "drizzle-orm";
+import { Hono } from "hono";
+import { moves, baseCards, packs, sets } from '../db/schema';
+import { eq } from "drizzle-orm";
+import { db } from "../db/server";
 
-  import { configDotenv } from "dotenv";
+const populate = new Hono();
 
-  configDotenv();
-
-
-  const populate = new Hono();
-  const db = drizzle(process.env.DATABASE_URL!);
-
-  populate.post("/moves", async (c) => {
-    const { name, cost, damage, moveEffect } = await c.req.json();
-    try {
-      await db.insert(moves).values({
-        name,
-        cost,
-        damage,
-        moveEffect,
-      });
-      return c.json({ message: "Move added successfully" });
-    } catch (error) {
-      console.error("Error adding move:", error);
-      return c.json({ error: "Failed to add move" });
-    }
-  });
+populate.post("/moves", async (c) => {
+  const { name, cost, damage, moveEffect } = await c.req.json();
+  try {
+    await db.insert(moves).values({
+      name,
+      cost,
+      damage,
+      moveEffect,
+    });
+    return c.json({ message: "Move added successfully" });
+  } catch (error) {
+    console.error("Error adding move:", error);
+    return c.json({ error: "Failed to add move" });
+  }
+});
 
 populate.post("/base_cards", async (c) => {
     const data = await c.req.json();
@@ -91,4 +85,4 @@ populate.post("/sets", async(c)=>{
   }
 })
 
-  export default populate;
+export default populate;

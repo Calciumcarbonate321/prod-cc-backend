@@ -4,6 +4,7 @@ import { moves } from './db/schema';
 import { configDotenv } from "dotenv";
 import card from "./routes/card";
 import populate from "./routes/populate";
+import levels from "./routes/levels";
 
 configDotenv();
 
@@ -17,6 +18,7 @@ app.get("/", async (c) => {
 
 app.route("/cards", card);
 app.route("/populate", populate);
+app.route("/levels", levels);
 
 app.get("/message", (c) => {
   return c.text("Hello Hono!");
